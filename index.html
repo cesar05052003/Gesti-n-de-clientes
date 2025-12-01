@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clientes Interactivo</title>
+    <script type="text/javascript" src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        #mynetwork {
+            flex-grow: 1;
+            min-width: 500px;
+            height: 670px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .controls {
+            width: 320px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        fieldset {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        legend {
+            font-weight: bold;
+            color: #3498db;
+        }
+        label, input, select, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.danger {
+            background-color: #e74c3c;
+        }
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+        button.success {
+            background-color: #2ecc71;
+        }
+        button.success:hover {
+            background-color: #27ae60;
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .explanation {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .report {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .report h2 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .report-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+        }
+        .report-section h3 {
+            color: #2980b9;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .report-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .report-item:last-child {
+            border-bottom: none;
+        }
+        .stat-value {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Grafo Aplicado A La Gestión de Clientes y Productos</h1>
+
+    <div class="main-container">
+        <div class="controls">
+            <form id="form-add-node">
+                <fieldset>
+                    <legend>Añadir Nodo</legend>
+                    <label for="node-label">Nombre:</label>
+                    <input type="text" id="node-label" placeholder="Ej: Pedro, Producto D" required>
+                    
+                    <label for="node-group">Tipo:</label>
+                    <select id="node-group">
+                        <option value="clientes">Cliente</option>
+                        <option value="productos">Producto</option>
+                    </select>
+                    
+                    <button type="submit">Añadir Nodo</button>
+                </fieldset>
+            </form>
+
+            <form id="form-add-edge">
+                <fieldset>
+                    <legend>Añadir Compra</legend>
+                    <label for="edge-from">Cliente:</label>
+                    <select id="edge-from" required></select>
+                    
+                    <label for="edge-to">Producto:</label>
+                    <select id="edge-to" required></select>
+                    
+                    <button type="submit">Crear Compra</button>
+                </fieldset>
+            </form>
+            
+            <div class="actions">
+                <button id="btn-generate" class="success">Generar Datos</button>
+                <button id="btn-fit">Centrar Grafo</button>
+                <button id="btn-reset" class="danger">Limpiar Grafo</button>
+            </div>
+        </div>
+        <div id="mynetwork"></div>
+    </div>
+
+    <div class="explanation">
+        <h2>Análisis del Grafo</h2>
+        <p>
+            Usa los controles para añadir nuevos clientes/productos y registrar sus compras. También puedes generar un conjunto de datos de ejemplo para probar la funcionalidad.
+        </p>
+
+        <h3>¿Cómo funciona este grafo?</h3>
+        <p>
+            Cada nodo representa una entidad: los <strong>clientes</strong> (grupo <em>clientes</em>) y los <strong>productos</strong> (grupo <em>productos</em>). Una arista (línea) que va desde un cliente a un producto indica que el cliente ha comprado ese producto. El grafo utiliza colores y formas distintas para facilitar la identificación visual: los clientes son puntos azules y los productos cajas naranjas.
+        </p>
+        <p>
+            La visualización es interactiva: puedes arrastrar nodos para reorganizarlos, hacer zoom y centrar el grafo. Además, puedes añadir nodos y aristas manualmente desde los formularios o generar datos de ejemplo con el botón <strong>Generar Datos</strong>. Las propiedades físicas (fuerzas y repulsión) ayudan a distribuir los nodos para que las conexiones sean más legibles.
+        </p>
+
+        <h3>¿Qué problemas de gestión de clientes resuelve?</h3>
+        <ul>
+            <li><strong>Detección de productos populares:</strong> al contar las aristas que apuntan a cada producto podemos saber cuáles son los más vendidos.</li>
+            <li><strong>Segmentación por intereses:</strong> los clientes conectados a los mismos productos forman grupos con intereses similares, útil para campañas y segmentación.</li>
+            <li><strong>Recomendaciones:</strong> si un cliente A y un cliente B comparten varios productos, podemos recomendar a A productos que compró B y viceversa.</li>
+            <li><strong>Identificación de clientes influyentes:</strong> clientes con muchas conexiones pueden ser buenos candidatos para promociones o programas de fidelidad.</li>
+            <li><strong>Optimización de catálogo:</strong> al ver qué productos se compran juntos podemos diseñar bundles o promociones cruzadas.</li>
+        </ul>
+
+        <h3>Cómo usarlo paso a paso</h3>
+        <ol>
+            <li>Haz clic en <strong>Generar Datos</strong> para crear un conjunto de ejemplo (rápido para probar el sistema).</li>
+            <li>Observa el grafo y usa el panel de <strong>Reporte de Análisis</strong> abajo para ver métricas (productos más populares, actividad por cliente, clientes similares y estadísticas generales).</li>
+            <li>Añade clientes o productos manualmente si quieres probar casos concretos; crea compras con el formulario correspondiente.</li>
+            <li>Arrastra nodos para clarificar la vista; usa <strong>Centrar Grafo</strong> si necesitas reacomodar la visualización.</li>
+            <li>El reporte se actualiza automáticamente ante cualquier cambio (generar datos, añadir nodos/aristas o limpiar el grafo), por lo que siempre verás las métricas más recientes.</li>
+        </ol>
+
+        <p>
+            En resumen, este grafo proporciona una herramienta visual y analítica para entender las relaciones entre clientes y productos de forma intuitiva, facilitando decisiones de marketing, ventas y fidelización basadas en los patrones de compra observados.
+        </p>
+    </div>
+
+    <div class="report">
+        <h2>📊 Reporte de Análisis de Patrones de Compra</h2>
+        
+        <div class="report-section">
+            <h3>🏆 Productos Más Populares</h3>
+            <div id="topProducts"></div>
+        </div>
+
+        <div class="report-section">
+            <h3>👥 Actividad de Clientes</h3>
+            <div id="customerActivity"></div>
+        </div>
+
+        <div class="report-section">
+            <h3>🤝 Clientes con Intereses Similares</h3>
+            <div id="similarCustomers"></div>
+        </div>
+
+        <div class="report-section">
+            <h3>📈 Estadísticas Generales</h3>
+            <div id="generalStats"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Datos iniciales (vacíos)
+        const initialNodes = [];
+        const initialEdges = [];
+
+        // DataSets
+        const nodes = new vis.DataSet(initialNodes);
+        const edges = new vis.DataSet(initialEdges);
+
+        // Configuración del grafo
+        const container = document.getElementById('mynetwork');
+        const data = { nodes: nodes, edges: edges };
+        const options = {
+            nodes: { shape: 'dot', size: 20, font: { size: 14, color: '#333' }, borderWidth: 2 },
+            edges: { width: 2, arrows: 'to' },
+            groups: {
+                clientes: { color: { background: '#97C2FC', border: '#2B7CE9' }, shape: 'dot' },
+                productos: { color: { background: '#FFA500', border: '#FF6347' }, shape: 'box', font: { color: '#fff' } }
+            },
+            interaction: {
+                hover: true,
+                dragNodes: true,
+                dragView: false,
+                zoomView: false
+            },
+            physics: { enabled: true, solver: 'barnesHut', barnesHut: { gravitationalConstant: -4000, centralGravity: 0.1, springLength: 150 }, stabilization: { iterations: 1000 } }
+        };
+        const network = new vis.Network(container, data, options);
+
+        // --- FUNCIONES Y EVENTOS ---
+
+        function updateEdgeDropdowns() {
+            const fromSelect = document.getElementById('edge-from');
+            const toSelect = document.getElementById('edge-to');
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+
+            nodes.get({ filter: item => item.group === 'clientes' }).forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.text = node.label;
+                fromSelect.appendChild(option);
+            });
+
+            nodes.get({ filter: item => item.group === 'productos' }).forEach(node => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.text = node.label;
+                toSelect.appendChild(option);
+            });
+        }
+
+        document.getElementById('form-add-node').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const label = document.getElementById('node-label').value;
+            const group = document.getElementById('node-group').value;
+            if (label) {
+                nodes.add({ id: new Date().getTime(), label: label, group: group });
+                document.getElementById('node-label').value = '';
+                updateEdgeDropdowns();
+                           generateReport();
+            }
+        });
+
+        document.getElementById('form-add-edge').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const from = document.getElementById('edge-from').value;
+            const to = document.getElementById('edge-to').value;
+            if (from && to) edges.add({ from: from, to: to });
+                    generateReport();
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', function() {
+            if (confirm('¿Estás seguro de que quieres borrar todos los datos del grafo?')) {
+                nodes.clear();
+                edges.clear();
+                               generateReport();
+                updateEdgeDropdowns();
+            }
+        });
+        
+        function generateSampleData() {
+            nodes.clear();
+            edges.clear();
+            
+            const sampleClients = ['Carlos', 'Sofia', 'Luis', 'Valentina', 'Javier', 'Camila', 'Mateo', 'Isabella', 'Daniel', 'Gabriela'];
+            const sampleProducts = ['Laptop', 'Mouse', 'Teclado', 'Monitor', 'Webcam', 'Audífonos', 'Silla Gamer', 'Mochila', 'Disco SSD', 'Impresora', 'Micrófono'];
+            
+            let newNodes = [];
+            let clientIds = [];
+            for (let i = 0; i < 6; i++) {
+                const id = 'c' + i;
+                newNodes.push({ id: id, label: sampleClients[Math.floor(Math.random() * sampleClients.length)], group: 'clientes' });
+                clientIds.push(id);
+            }
+            
+            let productIds = [];
+            for (let i = 0; i < 8; i++) {
+                const id = 'p' + i;
+                newNodes.push({ id: id, label: sampleProducts[Math.floor(Math.random() * sampleProducts.length)], group: 'productos' });
+                productIds.push(id);
+            }
+            nodes.add(newNodes);
+
+            let newEdges = [];
+            clientIds.forEach(clientId => {
+                const purchases = Math.floor(Math.random() * 3) + 1;
+                let purchasedProducts = new Set();
+                for (let i = 0; i < purchases; i++) {
+                    let productId = productIds[Math.floor(Math.random() * productIds.length)];
+                    if (!purchasedProducts.has(productId)) {
+                        newEdges.push({ from: clientId, to: productId });
+                        purchasedProducts.add(productId);
+                    }
+                }
+            });
+            edges.add(newEdges);
+            
+            updateEdgeDropdowns();
+            network.fit(); // <-- AJUSTE AUTOMÁTICO
+            generateReport(); // <-- GENERAR REPORTE INMEDIATAMENTE
+        }
+        
+        document.getElementById('btn-generate').addEventListener('click', generateSampleData);
+        
+        document.getElementById('btn-fit').addEventListener('click', () => {
+            network.fit(); // <-- BOTÓN PARA CENTRAR
+        });
+
+        // --- FUNCIONES DE ANÁLISIS DE REPORTE ---
+        
+        function generateReport() {
+            // Obtener todos los nodos y aristas
+            const allNodes = nodes.get();
+            const allEdges = edges.get();
+            
+            // 1. PRODUCTOS MÁS POPULARES
+            const productPopularity = {};
+            allEdges.forEach(edge => {
+                if (!productPopularity[edge.to]) {
+                    productPopularity[edge.to] = 0;
+                }
+                productPopularity[edge.to]++;
+            });
+            
+            const topProductsDiv = document.getElementById('topProducts');
+            if (Object.keys(productPopularity).length === 0) {
+                topProductsDiv.innerHTML = '<p style="color: #999;">No hay datos disponibles</p>';
+            } else {
+                const sortedProducts = Object.entries(productPopularity)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+                
+                topProductsDiv.innerHTML = sortedProducts.map(([productId, count]) => {
+                    const product = allNodes.find(n => n.id === productId);
+                    const productName = product ? product.label : productId;
+                    return `<div class="report-item"><strong>${productName}</strong> - <span class="stat-value">${count} compra${count > 1 ? 's' : ''}</span></div>`;
+                }).join('');
+            }
+            
+            // 2. ACTIVIDAD DE CLIENTES
+            const customerActivity = {};
+            allEdges.forEach(edge => {
+                if (!customerActivity[edge.from]) {
+                    customerActivity[edge.from] = 0;
+                }
+                customerActivity[edge.from]++;
+            });
+            
+            const customerActivityDiv = document.getElementById('customerActivity');
+            if (Object.keys(customerActivity).length === 0) {
+                customerActivityDiv.innerHTML = '<p style="color: #999;">No hay datos disponibles</p>';
+            } else {
+                const sortedCustomers = Object.entries(customerActivity)
+                    .sort((a, b) => b[1] - a[1]);
+                
+                customerActivityDiv.innerHTML = sortedCustomers.map(([clientId, count]) => {
+                    const client = allNodes.find(n => n.id === clientId);
+                    const clientName = client ? client.label : clientId;
+                    return `<div class="report-item"><strong>${clientName}</strong> - <span class="stat-value">${count} producto${count > 1 ? 's' : ''}</span> comprado${count > 1 ? 's' : ''}</div>`;
+                }).join('');
+            }
+            
+            // 3. CLIENTES CON INTERESES SIMILARES
+            const clientProducts = {};
+            allEdges.forEach(edge => {
+                if (!clientProducts[edge.from]) {
+                    clientProducts[edge.from] = new Set();
+                }
+                clientProducts[edge.from].add(edge.to);
+            });
+            
+            const similarClientsDiv = document.getElementById('similarCustomers');
+            const clientIds = Object.keys(clientProducts);
+            let similarPairs = [];
+            
+            for (let i = 0; i < clientIds.length; i++) {
+                for (let j = i + 1; j < clientIds.length; j++) {
+                    const client1Id = clientIds[i];
+                    const client2Id = clientIds[j];
+                    const products1 = clientProducts[client1Id];
+                    const products2 = clientProducts[client2Id];
+                    
+                    // Encontrar intersección
+                    const commonProducts = [...products1].filter(p => products2.has(p));
+                    
+                    if (commonProducts.length > 0) {
+                        similarPairs.push({
+                            client1Id: client1Id,
+                            client2Id: client2Id,
+                            commonCount: commonProducts.length,
+                            commonProducts: commonProducts
+                        });
+                    }
+                }
+            }
+            
+            if (similarPairs.length === 0) {
+                similarClientsDiv.innerHTML = '<p style="color: #999;">No hay clientes con intereses similares aún</p>';
+            } else {
+                similarPairs.sort((a, b) => b.commonCount - a.commonCount);
+                
+                similarClientsDiv.innerHTML = similarPairs.slice(0, 5).map(pair => {
+                    const client1 = allNodes.find(n => n.id === pair.client1Id);
+                    const client2 = allNodes.find(n => n.id === pair.client2Id);
+                    const client1Name = client1 ? client1.label : pair.client1Id;
+                    const client2Name = client2 ? client2.label : pair.client2Id;
+                    
+                    const commonProductNames = pair.commonProducts
+                        .map(pId => {
+                            const p = allNodes.find(n => n.id === pId);
+                            return p ? p.label : pId;
+                        })
+                        .join(', ');
+                    
+                    return `<div class="report-item"><strong>${client1Name}</strong> y <strong>${client2Name}</strong> - <span class="stat-value">${pair.commonCount}</span> producto${pair.commonCount > 1 ? 's' : ''} en común (${commonProductNames})</div>`;
+                }).join('');
+            }
+            
+            // 4. ESTADÍSTICAS GENERALES
+            const generalStatsDiv = document.getElementById('generalStats');
+            const clientCount = allNodes.filter(n => n.group === 'clientes').length;
+            const productCount = allNodes.filter(n => n.group === 'productos').length;
+            const purchaseCount = allEdges.length;
+            const avgPurchasesPerClient = clientCount > 0 ? (purchaseCount / clientCount).toFixed(2) : 0;
+            const avgClientsPerProduct = productCount > 0 ? (purchaseCount / productCount).toFixed(2) : 0;
+            
+            generalStatsDiv.innerHTML = `
+                <div class="report-item">
+                    <span class="stat-label">Total de Clientes:</span> <span class="stat-value">${clientCount}</span>
+                </div>
+                <div class="report-item">
+                    <span class="stat-label">Total de Productos:</span> <span class="stat-value">${productCount}</span>
+                </div>
+                <div class="report-item">
+                    <span class="stat-label">Total de Compras:</span> <span class="stat-value">${purchaseCount}</span>
+                </div>
+                <div class="report-item">
+                    <span class="stat-label">Promedio de Compras por Cliente:</span> <span class="stat-value">${avgPurchasesPerClient}</span>
+                </div>
+                <div class="report-item">
+                    <span class="stat-label">Promedio de Clientes por Producto:</span> <span class="stat-value">${avgClientsPerProduct}</span>
+                </div>
+            `;
+        }
+        
+        // Actualizar reporte cuando cambien los datos
+        nodes.on('add change remove', () => generateReport());
+        edges.on('add change remove', () => generateReport());
+
+        window.addEventListener('load', () => {
+            updateEdgeDropdowns();
+            generateReport();
+        });
+    </script>
+
+</body>
+</html>
