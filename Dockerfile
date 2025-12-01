@@ -1,11 +1,14 @@
-# Usar la imagen oficial de Nginx
-FROM nginx:alpine
+# Usar imagen base de Python
+FROM python:3.11-slim
 
-# Copiar los archivos del proyecto al contenedor
-COPY . /usr/share/nginx/html
+# Establecer directorio de trabajo
+WORKDIR /app
 
-# Exponer el puerto 80
-EXPOSE 80
+# Copiar archivos del proyecto
+COPY . .
 
-# Comando por defecto de Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Exponer puerto 8000
+EXPOSE 8000
+
+# Comando para ejecutar la aplicación
+CMD ["python", "-m", "http.server", "8000"]
